@@ -7,16 +7,20 @@ the ground up to work more smoothly with modern monad transformers and exception
 [![Build Status](https://travis-ci.org/sdiehl/haskell-linenoise.svg?branch=master)](https://travis-ci.org/sdiehl/haskell-linenoise)
 
 ```haskell
-module Main where
-
 import System.Console.Repl
+import Control.Monad.State.Strict
+
+type Repl = ReplT IO
 
 completer :: String -> [String]
 completer ('h':_) = ["hello", "hello there"]
 completer _ = []
 
+repl :: Repl ()
+repl = replM ">>> " outputStrLn completer
+
 main :: IO ()
-main = replIO ">>> " print completer
+main = runRepl repl undefined
 ```
 
 License

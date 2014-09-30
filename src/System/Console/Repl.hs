@@ -1,144 +1,87 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module System.Console.Repl (
-  getInputLine,
-  addHistory,
-  clearScreen,
-  stifleHistory,
-  historySave,
-  historyLoad,
-  printKeycodes,
-  setMultiline,
-  setCompletion,
+  ReplT,
+  runRepl,
 
   replIO,
+  replM,
 
-  ReplT(unReplT),
-  Repl,
+  MonadRepl(..),
 ) where
 
-import Foreign
-import Foreign.C.String
-import Foreign.C.Types(CInt(..), CChar, CSize)
+import qualified System.Console.FFI as FFI
+import Data.String (IsString(..))
 
-import Data.String
-import System.Console.Monad
+import Control.Monad
+import Control.Applicative
+import Control.Monad.Identity
+import Control.Monad.Trans
+import Control.Monad.Reader
+import Control.Monad.State.Strict
+import Control.Monad.Catch
 
-{-
-typedef struct linenoiseCompletions {
-  size_t len;
-  char **cvec;
-} linenoiseCompletions;
--}
+data Settings
 
-foreign import ccall "linenoise.h linenoise"
-  linenoise :: CString -> IO CString
-foreign import ccall "linenoise.h linenoiseHistoryAdd"
-  linenoiseHistoryAdd :: Ptr CChar -> IO CInt
-foreign import ccall "linenoise.h linenoiseHistorySetMaxLen"
-  linenoiseHistorySetMaxLen :: CInt -> IO CInt
-foreign import ccall "linenoise.h linenoiseHistorySave"
-  linenoiseHistorySave :: CString -> IO ()
-foreign import ccall "linenoise.h linenoiseHistoryLoad"
-  linenoiseHistoryLoad :: CString -> IO ()
-foreign import ccall "linenoise.h linenoiseClearScreen"
-  linenoiseClearScreen :: IO ()
-foreign import ccall "linenoise.h linenoiseSetMultiLine"
-  linenoiseSetMultiLine :: CInt -> IO ()
-foreign import ccall "linenoise.h linenoisePrintKeyCodes"
-  linenoisePrintKeyCodes :: IO ()
-foreign import ccall "linenoise.h linenoiseSetCompletionCallback"
-  linenoiseSetCompletionCallback :: FunPtr CompleteFunc -> IO ()
-foreign import ccall "linenoise.h linenoiseAddCompletion"
-  linenoiseAddCompletion :: Completion -> CString -> IO ()
+newtype ReplT m a =
+  ReplT { unReplT :: ReaderT Settings m a }
+  deriving (Functor, Monad, Applicative, MonadIO, MonadReader Settings, MonadFix, MonadTrans, MonadPlus, MonadThrow, MonadCatch)
 
-foreign import ccall "wrapper"
-    makeFunPtr :: CompleteFunc -> IO (FunPtr CompleteFunc)
+runRepl :: ReplT m a -> Settings -> m a
+runRepl m s = runReaderT (unReplT m) s
 
-data CompletionType = CompletionType CSize (Ptr (Ptr CChar))
-  deriving (Show, Eq)
+class MonadCatch m => MonadRepl m where
+  getInputLine  :: IsString s => String -> m (Maybe s)
+  outputStr     :: String -> m ()
+  outputStrLn   :: String -> m ()
+  addHistory    :: String -> m ()
+  setCompletion :: (String -> m [String]) -> m ()
 
-type Completion = Ptr CompletionType
+instance MonadRepl IO where
+  getInputLine  = FFI.getInputLine
+  outputStr     = putStr
+  outputStrLn   = putStrLn
+  addHistory    = FFI.addHistory
+  setCompletion = FFI.setCompletion
 
-instance Storable CompletionType where
-  sizeOf _ = 8
-  alignment = sizeOf
-  peek ptr = do
-    a <- peekByteOff ptr 0
-    b <- peekByteOff ptr 4
-    return (CompletionType a b)
+instance MonadRepl m => MonadRepl (ReplT m) where
+  getInputLine  = lift . getInputLine
+  outputStr     = lift . outputStr
+  outputStrLn   = lift . outputStrLn
+  addHistory    = lift . addHistory
 
-{-
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == 'h') {
-        linenoiseAddCompletion(lc,"hello");
-        linenoiseAddCompletion(lc,"hello there");
-    }
-}
--}
+  setCompletion :: (String -> ReplT m [String]) -> ReplT m ()
+  setCompletion f = do
+    settings <- ask
+    lift $ setCompletion (flip runRepl settings . f )
 
-type CompleteFunc = (CString -> Completion -> IO ())
+instance MonadState s m => MonadState s (ReplT m) where
+  get = lift get
+  put = lift . put
 
--- Make a completion function pointer.
-makeCompletion :: (String -> [String]) -> (CString -> Completion -> IO ())
-makeCompletion f buf lc = do
-  line <- peekCString buf
-  let comps = f line
-  cstrs <- mapM newCString comps
-  mapM_ (linenoiseAddCompletion lc) cstrs
+instance (MonadRepl m) => MonadRepl (StateT s m) where
+  getInputLine  = lift . getInputLine
+  outputStr     = lift . outputStr
+  outputStrLn   = lift . outputStrLn
+  addHistory    = lift . addHistory
+  setCompletion f = do
+    st <- get
+    lift $ setCompletion (flip evalStateT st. f )
 
--- Run the prompt, yielding a polymorphic string ( String, Text, ByteString ).
-getInputLine :: IsString a => String -> IO (Maybe a)
-getInputLine prompt = do
-  str <- newCString prompt
-  ptr <- linenoise str
-  res <- maybePeek peekCString ptr
-  free str
-  return (fmap fromString res)
-
--- Add history
-addHistory :: String -> IO ()
-addHistory line = do
-  str <- newCString line
-  _ <- linenoiseHistoryAdd str
-  return ()
-
-stifleHistory :: Int -> IO ()
-stifleHistory len = do
-  _ <- linenoiseHistorySetMaxLen $ fromIntegral len
-  return ()
-
-historySave :: FilePath -> IO ()
-historySave fname = do
-  str <- newCString fname
-  _ <- linenoiseHistorySave str
-  return ()
-
-historyLoad :: FilePath -> IO ()
-historyLoad fname = do
-  str <- newCString fname
-  _ <- linenoiseHistoryLoad str
-  return ()
-
-clearScreen :: IO ()
-clearScreen = linenoiseClearScreen
-
-setMultiline :: Bool -> IO ()
-setMultiline = linenoiseSetMultiLine . fromBool
-
-printKeycodes :: IO ()
-printKeycodes = linenoisePrintKeyCodes
-
-setCompletion :: (String -> [String]) -> IO ()
-setCompletion f = do
-  cb <- makeFunPtr (makeCompletion f)
-  linenoiseSetCompletionCallback cb
-
-replIO :: String               -- ^ Prompt
-     -> (String -> IO a)       -- ^ Action
-     -> (String -> [String])   -- ^ Completion
-     -> IO ()
+-- | Simple REPL embedded in IO.
+replIO
+  :: String                -- ^ Prompt
+  -> (String -> IO a)      -- ^ Action
+  -> (String -> IO [String])  -- ^ Completion
+  -> IO ()
 replIO prompt action comp = do
   setCompletion comp
   res <- getInputLine prompt
@@ -146,5 +89,21 @@ replIO prompt action comp = do
     Nothing   -> return ()
     Just line -> do
       _ <- action line
-      addHistory line
+      FFI.addHistory line
       replIO prompt action comp
+
+replM
+  :: (MonadRepl m)
+  => String                  -- ^ Prompt
+  -> (String -> m a)         -- ^ Action
+  -> (String -> m [String])  -- ^ Completion
+  -> m ()
+replM prompt action comp = do
+  setCompletion comp
+  res <- getInputLine prompt
+  case res of
+    Nothing   -> return ()
+    Just line -> do
+      _ <- action line
+      addHistory line
+      replM prompt action comp
