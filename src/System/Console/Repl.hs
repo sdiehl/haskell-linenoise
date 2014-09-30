@@ -1,19 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module System.Console.Repl (
   getInputLine,
   addHistory,
   clearScreen,
   stifleHistory,
+  historySave,
+  historyLoad,
   printKeycodes,
   setMultiline,
   setCompletion,
 
   replIO,
 
-  ReplT(unInputT),
+  ReplT(unReplT),
   Repl,
 ) where
 
@@ -22,19 +23,7 @@ import Foreign.C.String
 import Foreign.C.Types(CInt(..), CChar, CSize)
 
 import Data.String
-
-import Control.Monad
-import Control.Applicative
-import Control.Monad.Identity
-import Control.Monad.Trans
-import Control.Monad.Reader
-import Control.Monad.Catch
-
-newtype ReplT m a =
-  ReplT { unInputT :: ReaderT () m a }
-  deriving (Functor, Monad, Applicative, MonadIO, MonadFix, MonadTrans, MonadPlus, MonadThrow, MonadCatch)
-
-type Repl = ReplT Identity
+import System.Console.Monad
 
 {-
 typedef struct linenoiseCompletions {
@@ -49,6 +38,10 @@ foreign import ccall "linenoise.h linenoiseHistoryAdd"
   linenoiseHistoryAdd :: Ptr CChar -> IO CInt
 foreign import ccall "linenoise.h linenoiseHistorySetMaxLen"
   linenoiseHistorySetMaxLen :: CInt -> IO CInt
+foreign import ccall "linenoise.h linenoiseHistorySave"
+  linenoiseHistorySave :: CString -> IO ()
+foreign import ccall "linenoise.h linenoiseHistoryLoad"
+  linenoiseHistoryLoad :: CString -> IO ()
 foreign import ccall "linenoise.h linenoiseClearScreen"
   linenoiseClearScreen :: IO ()
 foreign import ccall "linenoise.h linenoiseSetMultiLine"
@@ -114,6 +107,18 @@ addHistory line = do
 stifleHistory :: Int -> IO ()
 stifleHistory len = do
   _ <- linenoiseHistorySetMaxLen $ fromIntegral len
+  return ()
+
+historySave :: FilePath -> IO ()
+historySave fname = do
+  str <- newCString fname
+  _ <- linenoiseHistorySave str
+  return ()
+
+historyLoad :: FilePath -> IO ()
+historyLoad fname = do
+  str <- newCString fname
+  _ <- linenoiseHistoryLoad str
   return ()
 
 clearScreen :: IO ()
