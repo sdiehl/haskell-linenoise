@@ -2,7 +2,7 @@ name:                linenoise
 version:             0.1
 synopsis:            Interactive prompts with linenoise.
 homepage:            https://github.com/sdiehl/haskell-linenoise
-license:             BSD2
+license:             BSD3
 license-file:        LICENSE
 author:              Stephen Diehl
 maintainer:          stephen.m.diehl@gmail.com
