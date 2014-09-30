@@ -3,8 +3,8 @@
 module Main where
 
 import System.Console.Repl
-import Data.List (isPrefixOf)
 import Control.Monad.State.Strict
+import Data.List (isPrefixOf)
 
 type Repl = ReplT (StateT [String] IO)
 

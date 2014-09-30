@@ -8,7 +8,6 @@ the ground up to work more smoothly with modern monad transformers and exception
 
 ```haskell
 import System.Console.Repl
-import Control.Monad.State.Strict
 
 type Repl = ReplT IO
 
@@ -21,6 +20,33 @@ repl = replM ">>> " outputStrLn completer
 
 main :: IO ()
 main = runRepl repl undefined
+```
+
+Can compose with the regular State monad, for instance to do stateful tab completion. Something which is
+painful with Haskeline.
+
+```haskell
+import System.Console.Repl
+import Control.Monad.State.Strict
+import Data.List (isPrefixOf)
+
+type Repl = ReplT (StateT [String] IO)
+
+completer :: String -> Repl [String]
+completer line = do
+  comps <- get
+  return $ filter (isPrefixOf line) comps
+
+action :: String -> Repl ()
+action x = do
+  modify $ (x:)
+  liftIO $ putStrLn x
+
+repl :: Repl ()
+repl = replM ">>> " action completer
+
+main :: IO ()
+main = evalStateT (runRepl repl undefined) []
 ```
 
 License
