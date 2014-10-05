@@ -12,6 +12,11 @@ module System.Console.Repl (
   ReplT,
   runRepl,
 
+  Settings(..),
+  defaultSettings,
+
+  byWord,
+
   replIO,
   replM,
 
@@ -29,7 +34,12 @@ import Control.Monad.Reader
 import Control.Monad.State.Strict
 import Control.Monad.Catch
 
-data Settings
+data Settings = Settings
+  { historyFile :: Maybe FilePath
+  }
+
+defaultSettings :: Settings
+defaultSettings = Settings Nothing
 
 newtype ReplT m a =
   ReplT { unReplT :: ReaderT Settings m a }
@@ -75,6 +85,30 @@ instance (MonadRepl m) => MonadRepl (StateT s m) where
   setCompletion f = do
     st <- get
     lift $ setCompletion (flip evalStateT st. f )
+
+-- XXX cleanup
+byWord :: (Monad m) => (String -> m [String]) -> (String -> m [String])
+byWord f line = do
+  let split = words line
+  case split of
+    [] -> f line
+    [_] -> f line
+    sp -> do
+      let (x,xs) = (last sp, init sp)
+      res <- (f x)
+      case res of
+        [] -> return [line]
+        [y] -> do
+          return [(unwords xs) ++ " " ++ x ++ (trimComplete x y) ++ " "]
+        ys -> do
+          return $ map (complete x xs) ys
+
+complete :: String -> [String] -> String -> String
+complete x xs y =
+  (unwords xs) ++ " " ++ x ++ (trimComplete x y)
+
+trimComplete :: String -> String -> String
+trimComplete = drop . length
 
 -- | Simple REPL embedded in IO.
 replIO

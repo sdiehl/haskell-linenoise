@@ -19,7 +19,7 @@ action x = do
   liftIO $ putStrLn x
 
 repl :: Repl ()
-repl = replM ">>> " action completer
+repl = replM ">>> " action (byWord completer)
 
 main :: IO ()
-main = evalStateT (runRepl repl undefined) []
+main = evalStateT (runRepl repl defaultSettings) []

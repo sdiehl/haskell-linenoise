@@ -1,10 +1,10 @@
 Repl
 ----
 
+[![Build Status](https://travis-ci.org/sdiehl/haskell-linenoise.svg?branch=master)](https://travis-ci.org/sdiehl/haskell-linenoise)
+
 Initial work on a lightweight readline library for Haskell based on the ``linenoise`` library. Designed from
 the ground up to work more smoothly with modern monad transformers and exceptions libraries.
-
-[![Build Status](https://travis-ci.org/sdiehl/haskell-linenoise.svg?branch=master)](https://travis-ci.org/sdiehl/haskell-linenoise)
 
 ```haskell
 import System.Console.Repl
