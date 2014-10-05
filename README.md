@@ -19,7 +19,7 @@ repl :: Repl ()
 repl = replM ">>> " outputStrLn completer
 
 main :: IO ()
-main = runRepl repl undefined
+main = runRepl repl defaultSettings
 ```
 
 Can compose with the regular State monad, for instance to do stateful tab completion. Something which is
@@ -43,10 +43,10 @@ action x = do
   liftIO $ putStrLn x
 
 repl :: Repl ()
-repl = replM ">>> " action completer
+repl = replM ">>> " action (byWord completer)
 
 main :: IO ()
-main = evalStateT (runRepl repl undefined) []
+main = evalStateT (runRepl repl defaultSettings) []
 ```
 
 License
