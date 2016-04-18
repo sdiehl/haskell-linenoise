@@ -29,9 +29,9 @@ library
   ghc-options:        -Wall -fwarn-tabs
   cc-options:         
   build-depends:      
-    base        >= 4.6 && <4.7,
+    base        >= 4.6 && <4.10,
     mtl         >= 2.2 && <3.0,
-    exceptions  >= 0.6 && <0.7,
+    exceptions  >= 0.7 && <0.9,
     filepath,
     directory
 

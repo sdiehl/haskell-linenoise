@@ -43,7 +43,7 @@ defaultSettings = Settings Nothing
 
 newtype ReplT m a =
   ReplT { unReplT :: ReaderT Settings m a }
-  deriving (Functor, Monad, Applicative, MonadIO, MonadReader Settings, MonadFix, MonadTrans, MonadPlus, MonadThrow, MonadCatch)
+  deriving (Functor, Monad, Applicative, MonadIO, MonadReader Settings, MonadFix, MonadTrans, MonadThrow, MonadCatch)
 
 runRepl :: ReplT m a -> Settings -> m a
 runRepl m s = runReaderT (unReplT m) s
