@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -26,8 +25,6 @@ module System.Console.Repl (
 import qualified System.Console.FFI as FFI
 import Data.String (IsString(..))
 
-import Control.Monad
-import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Monad.Reader

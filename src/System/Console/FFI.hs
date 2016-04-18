@@ -64,6 +64,7 @@ instance Storable CompletionType where
     a <- peekByteOff ptr 0
     b <- peekByteOff ptr 4
     return (CompletionType a b)
+  poke = error "no poke"
 
 -- Completion C callback
 type CompleteFunc = (CString -> Completion -> IO ())
