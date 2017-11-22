@@ -54,9 +54,4 @@ License
 
 Includes the source code for linenoise. Released under the BSD license.
 
-Copyright (c) 2010-2013, Salvatore Sanfilippo <antirez at gmail dot com>
-
-Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
-
-Copyright (c) 2014, Stephen Diehl
-
+Copyright (c) 2014-2017, Stephen Diehl
