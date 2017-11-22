@@ -10,30 +10,33 @@ copyright:           2014 Stephen Diehl
 category:            User Interfaces
 build-type:          Simple
 cabal-version:       >=1.10
-tested-with:         GHC == 7.6.1, GHC == 7.6.3, GHC == 7.8.3
 extra-source-files:  
   cbits/linenoise.h
 Bug-Reports:         https://github.com/sdiehl/haskell-linenoise/issues
 
 Description:
   Interactive prompts with linenoise.
+
 Source-Repository head
     Type: git
     Location: git@github.com:sdiehl/haskell-linenoise.git
 
 library
-  exposed-modules:     System.Console.Repl
+  exposed-modules:     
+    System.Console.Repl
+  other-modules:
+    System.Console.FFI
   other-extensions:
     ForeignFunctionInterface
 
   ghc-options:        -Wall -fwarn-tabs
   cc-options:         
   build-depends:      
-    base        >= 4.6 && <4.10,
+    base        >= 4.6 && <5.0,
     mtl         >= 2.2 && <3.0,
     exceptions  >= 0.7 && <0.9,
-    filepath,
-    directory
+    filepath    >= 1.2,
+    directory   >= 1.2
 
   default-language:   Haskell2010
   hs-source-dirs:     src
